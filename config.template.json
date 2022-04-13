@@ -1,0 +1,716 @@
+{
+    "data_members": { "u8":  "uint8_t", "u16": "uint16_t", "u32": "uint32_t" },
+    "definition_implementation_guard": "LITTLETRACE_IMPLEMENTATION",
+    "definition_include_guard": "__LITTLETRACE_H",
+    "definition_n_entries": "TRACE_N_ENTRIES",
+    "enable_counter": true,
+    "enable_timestamp": true,
+    "enable_test": true,
+    "filename_header": "littletrace.h",
+    "filename_source": "littletrace.c",
+    "filename_test": "littletrace_test.c",
+    "filename_freertos_header": "freertos_trace_config.h",
+    "function_name_begin_update": "trace_update_begin",
+    "function_name_end_update": "trace_update_end",
+    "function_name_assert": "assert",
+    "function_name_get_timestamp": "trace_get_timestamp",
+    "function_name_init_trace": "trace_init",
+    "function_name_update_trace": "trace_update",
+    "function_name_test_main": "main",
+    "header_only": true,
+    "n_entries": 513,
+    "output_dir": "../generated",
+    "pre_include": null,
+    "typename_counter": "uint32_t",
+    "typename_event_id": "uint8_t",
+    "typename_timestamp": "uint32_t",
+    "typename_trace_buffer": "trace_buffer_t",
+    "typename_trace_entry": "trace_entry_t",
+    "freertos_enable": true,
+    "freertos_queues": ["ADC", "UXR1", "UAR2a"],
+    "freertos_tasks": ["tADC", "tUXR1", "tUAR2a"],
+    "freertos_timers": ["tiADC", "tiUXR1", "tiUAR2a"],
+    "freertos_event_id_prefix": "TRACE_EVENT_FREERTOS_",
+    "freertos_hash_arg_type": "uint8_t",
+    "freertos_default_args": {
+        "QUEUE_NAME": "u8",
+        "QUEUE_LENGTH": "u16",
+        "QUEUE_POINTER": "u32",
+        "STREAM_BUFFER_POINTER": "u32",
+        "BITS": "u16",
+        "BITS_2": "u32",
+        "TIMEOUT_OCCURRED": "u8",
+        "ADDRESS": "u32",
+        "BYTE_COUNT": "u8",
+        "TASK_NAME": "u8",
+        "TASK_POINTER": "u32",
+        "QUEUE_TYPE": "u8",
+        "IS_MESSAGE_BUFFER": "u8",
+        "TICK_COUNT": "u32",
+        "INDEX": "u8",
+        "TIMER_NAME": "u32",
+        "TIMER_POINTER": "u32",
+        "COMMAND_ID": "u8",
+        "COMMAND_VALUE": "u16",
+        "PARAM_1": "u16",
+        "PARAM_2": "u16",
+        "RETURN": null,
+        "EVENT_GROUP": "u8"
+    },
+    "freertos_hooks": {
+        "BLOCKING_ON_QUEUE_PEEK": {
+          "generate_macro": true,
+          "define_trace_hook": true,
+          "args": {
+            "QUEUE_NAME": "default",
+            "QUEUE_LENGTH": "default",
+            "QUEUE_POINTER": "default"
+          }
+        },
+        "BLOCKING_ON_QUEUE_RECEIVE": {
+          "generate_macro": true,
+          "define_trace_hook": true,
+          "args": {
+            "QUEUE_NAME": "default",
+            "QUEUE_LENGTH": "default",
+            "QUEUE_POINTER": "default"
+          }
+        },
+        "BLOCKING_ON_QUEUE_SEND": {
+          "generate_macro": true,
+          "define_trace_hook": true,
+          "args": {
+            "QUEUE_NAME": "default",
+            "QUEUE_LENGTH": "default",
+            "QUEUE_POINTER": "default"
+          }
+        },
+        "BLOCKING_ON_STREAM_BUFFER_RECEIVE": {
+          "generate_macro": true,
+          "define_trace_hook": true,
+          "args": {
+            "STREAM_BUFFER_POINTER": "default"
+          }
+        },
+        "BLOCKING_ON_STREAM_BUFFER_SEND": {
+          "generate_macro": true,
+          "define_trace_hook": true,
+          "args": {
+            "STREAM_BUFFER_POINTER": "default"
+          }
+        },
+        "CREATE_COUNTING_SEMAPHORE": {
+          "generate_macro": true,
+          "define_trace_hook": true,
+          "args": {}
+        },
+        "CREATE_COUNTING_SEMAPHORE_FAILED": {
+          "generate_macro": true,
+          "define_trace_hook": true,
+          "args": {}
+        },
+        "CREATE_MUTEX": {
+          "generate_macro": true,
+          "define_trace_hook": true,
+          "args": {
+            "QUEUE_NAME": "default",
+            "QUEUE_LENGTH": "default",
+            "QUEUE_POINTER": "default"
+          }
+        },
+        "CREATE_MUTEX_FAILED": {
+          "generate_macro": true,
+          "define_trace_hook": true,
+          "args": {}
+        },
+        "EVENT_GROUP_CLEAR_BITS": {
+          "generate_macro": true,
+          "define_trace_hook": true,
+          "args": {
+            "EVENT_GROUP": "default",
+            "BITS": "default"
+          }
+        },
+        "EVENT_GROUP_CLEAR_BITS_FROM_ISR": {
+          "generate_macro": true,
+          "define_trace_hook": true,
+          "args": {
+            "EVENT_GROUP": "default",
+            "BITS": "default"
+          }
+        },
+        "EVENT_GROUP_CREATE": {
+          "generate_macro": true,
+          "define_trace_hook": true,
+          "args": {
+            "EVENT_GROUP": "default"
+          }
+        },
+        "EVENT_GROUP_CREATE_FAILED": {
+          "generate_macro": true,
+          "define_trace_hook": true,
+          "args": {}
+        },
+        "EVENT_GROUP_DELETE": {
+          "generate_macro": true,
+          "define_trace_hook": true,
+          "args": {
+            "EVENT_GROUP": "default"
+          }
+        },
+        "EVENT_GROUP_SET_BITS": {
+          "generate_macro": true,
+          "define_trace_hook": true,
+          "args": {
+            "EVENT_GROUP": "default",
+            "BITS": "default"
+          }
+        },
+        "EVENT_GROUP_SET_BITS_FROM_ISR": {
+          "generate_macro": true,
+          "define_trace_hook": true,
+          "args": {
+            "EVENT_GROUP": "default",
+            "BITS": "default"
+          }
+        },
+        "EVENT_GROUP_SYNC_BLOCK": {
+          "generate_macro": true,
+          "define_trace_hook": true,
+          "args": {
+            "EVENT_GROUP": "default",
+            "BITS": "default",
+            "BITS_2": "default"
+          }
+        },
+        "EVENT_GROUP_SYNC_END": {
+          "generate_macro": true,
+          "define_trace_hook": true,
+          "args": {
+            "EVENT_GROUP": "default",
+            "BITS": "default",
+            "BITS_2": "default",
+            "TIMEOUT_OCCURRED": "default"
+          }
+        },
+        "EVENT_GROUP_WAIT_BITS_BLOCK": {
+          "generate_macro": true,
+          "define_trace_hook": true,
+          "args": {
+            "EVENT_GROUP": "default",
+            "BITS": "default"
+          }
+        },
+        "EVENT_GROUP_WAIT_BITS_END": {
+          "generate_macro": true,
+          "define_trace_hook": true,
+          "args": {
+            "EVENT_GROUP": "default",
+            "BITS": "default",
+            "TIMEOUT_OCCURRED": null
+          }
+        },
+        "FREE": {
+          "generate_macro": true,
+          "define_trace_hook": true,
+          "args": {
+            "ADDRESS": "default"
+          }
+        },
+        "GIVE_MUTEX_RECURSIVE": {
+          "generate_macro": true,
+          "define_trace_hook": true,
+          "args": {
+            "QUEUE_NAME": "default",
+            "QUEUE_LENGTH": "default",
+            "QUEUE_POINTER": "default"
+          }
+        },
+        "GIVE_MUTEX_RECURSIVE_FAILED": {
+          "generate_macro": true,
+          "define_trace_hook": true,
+          "args": {
+            "QUEUE_NAME": "default",
+            "QUEUE_LENGTH": "default",
+            "QUEUE_POINTER": "default"
+          }
+        },
+        "MALLOC": {
+          "generate_macro": true,
+          "define_trace_hook": true,
+          "args": {
+            "ADDRESS": "default",
+            "BYTE_COUNT": "default"
+          }
+        },
+        "MOVED_TASK_TO_READY_STATE": {
+          "generate_macro": true,
+          "define_trace_hook": true,
+          "args": {
+            "TASK_NAME": "default",
+            "TASK_POINTER": "default"
+          }
+        },
+        "PEND_FUNC_CALL": {
+          "generate_macro": true,
+          "define_trace_hook": true,
+          "args": {
+            "ADDRESS": "default",
+            "PARAM_1": "default",
+            "PARAM_2": "default",
+            "RETURN": "default"
+          }
+        },
+        "PEND_FUNC_CALL_FROM_ISR": {
+          "generate_macro": true,
+          "define_trace_hook": true,
+          "args": {
+            "ADDRESS": "default",
+            "PARAM_1": "default",
+            "PARAM_2": "default",
+            "RETURN": "default"
+          }
+        },
+        "POST_MOVED_TASK_TO_READY_STATE": {
+          "generate_macro": true,
+          "define_trace_hook": true,
+          "args": {
+            "TASK_NAME": "default",
+            "TASK_POINTER": "default"
+          }
+        },
+        "QUEUE_CREATE": {
+          "generate_macro": true,
+          "define_trace_hook": true,
+          "args": {
+            "QUEUE_NAME": "default",
+            "QUEUE_LENGTH": "default",
+            "QUEUE_POINTER": "default"
+          }
+        },
+        "QUEUE_CREATE_FAILED": {
+          "generate_macro": true,
+          "define_trace_hook": true,
+          "args": {
+            "QUEUE_TYPE": "default"
+          }
+        },
+        "QUEUE_DELETE": {
+          "generate_macro": true,
+          "define_trace_hook": true,
+          "args": {
+            "QUEUE_NAME": "default",
+            "QUEUE_LENGTH": "default",
+            "QUEUE_POINTER": "default"
+          }
+        },
+        "QUEUE_PEEK": {
+          "generate_macro": true,
+          "define_trace_hook": true,
+          "args": {
+            "QUEUE_NAME": "default",
+            "QUEUE_LENGTH": "default",
+            "QUEUE_POINTER": "default"
+          }
+        },
+        "QUEUE_PEEK_FAILED": {
+          "generate_macro": true,
+          "define_trace_hook": true,
+          "args": {
+            "QUEUE_NAME": "default",
+            "QUEUE_LENGTH": "default",
+            "QUEUE_POINTER": "default"
+          }
+        },
+        "QUEUE_PEEK_FROM_ISR": {
+          "generate_macro": true,
+          "define_trace_hook": true,
+          "args": {
+            "QUEUE_NAME": "default",
+            "QUEUE_LENGTH": "default",
+            "QUEUE_POINTER": "default"
+          }
+        },
+        "QUEUE_PEEK_FROM_ISR_FAILED": {
+          "generate_macro": true,
+          "define_trace_hook": true,
+          "args": {
+            "QUEUE_NAME": "default",
+            "QUEUE_LENGTH": "default",
+            "QUEUE_POINTER": "default"
+          }
+        },
+        "QUEUE_RECEIVE": {
+          "generate_macro": true,
+          "define_trace_hook": true,
+          "args": {
+            "QUEUE_NAME": "default",
+            "QUEUE_LENGTH": "default",
+            "QUEUE_POINTER": "default"
+          }
+        },
+        "QUEUE_RECEIVE_FAILED": {
+          "generate_macro": true,
+          "define_trace_hook": true,
+          "args": {
+            "QUEUE_NAME": "default",
+            "QUEUE_LENGTH": "default",
+            "QUEUE_POINTER": "default"
+          }
+        },
+        "QUEUE_RECEIVE_FROM_ISR": {
+          "generate_macro": true,
+          "define_trace_hook": true,
+          "args": {
+            "QUEUE_NAME": "default",
+            "QUEUE_LENGTH": "default",
+            "QUEUE_POINTER": "default"
+          }
+        },
+        "QUEUE_RECEIVE_FROM_ISR_FAILED": {
+          "generate_macro": true,
+          "define_trace_hook": true,
+          "args": {
+            "QUEUE_NAME": "default",
+            "QUEUE_LENGTH": "default",
+            "QUEUE_POINTER": "default"
+          }
+        },
+        "QUEUE_REGISTRY_ADD": {
+          "generate_macro": true,
+          "define_trace_hook": true,
+          "args": {
+            "QUEUE_NAME": "default",
+            "QUEUE_LENGTH": "default",
+            "QUEUE_POINTER": "default"
+          }
+        },
+        "QUEUE_SEND": {
+          "generate_macro": true,
+          "define_trace_hook": true,
+          "args": {
+            "QUEUE_NAME": "default",
+            "QUEUE_LENGTH": "default",
+            "QUEUE_POINTER": "default"
+          }
+        },
+        "QUEUE_SEND_FAILED": {
+          "generate_macro": true,
+          "define_trace_hook": true,
+          "args": {
+            "QUEUE_NAME": "default",
+            "QUEUE_LENGTH": "default",
+            "QUEUE_POINTER": "default"
+          }
+        },
+        "QUEUE_SEND_FROM_ISR": {
+          "generate_macro": true,
+          "define_trace_hook": true,
+          "args": {
+            "QUEUE_NAME": "default",
+            "QUEUE_LENGTH": "default",
+            "QUEUE_POINTER": "default"
+          }
+        },
+        "QUEUE_SEND_FROM_ISR_FAILED": {
+          "generate_macro": true,
+          "define_trace_hook": true,
+          "args": {
+            "QUEUE_NAME": "default",
+            "QUEUE_LENGTH": "default",
+            "QUEUE_POINTER": "default"
+          }
+        },
+        "QUEUE_SET_SEND": {
+          "generate_macro": true,
+          "define_trace_hook": true,
+          "args": {
+            "QUEUE_NAME": "default",
+            "QUEUE_LENGTH": "default",
+            "QUEUE_POINTER": "default"
+          }
+        },
+        "STREAM_BUFFER_CREATE": {
+          "generate_macro": true,
+          "define_trace_hook": true,
+          "args": {
+            "STREAM_BUFFER_POINTER": "default",
+            "IS_MESSAGE_BUFFER": "default"
+          }
+        },
+        "STREAM_BUFFER_CREATE_FAILED": {
+          "generate_macro": true,
+          "define_trace_hook": true,
+          "args": {
+            "IS_MESSAGE_BUFFER": "default"
+          }
+        },
+        "STREAM_BUFFER_CREATE_STATIC_FAILED": {
+          "generate_macro": true,
+          "define_trace_hook": true,
+          "args": {
+            "RETURN": "default",
+            "IS_MESSAGE_BUFFER": "default"
+          }
+        },
+        "STREAM_BUFFER_DELETE": {
+          "generate_macro": true,
+          "define_trace_hook": true,
+          "args": {
+            "STREAM_BUFFER_POINTER": "default"
+          }
+        },
+        "STREAM_BUFFER_RECEIVE": {
+          "generate_macro": true,
+          "define_trace_hook": true,
+          "args": {
+            "STREAM_BUFFER_POINTER": "default",
+            "BYTE_COUNT": "default"
+          }
+        },
+        "STREAM_BUFFER_RECEIVE_FAILED": {
+          "generate_macro": true,
+          "define_trace_hook": true,
+          "args": {
+            "STREAM_BUFFER_POINTER": "default"
+          }
+        },
+        "STREAM_BUFFER_RECEIVE_FROM_ISR": {
+          "generate_macro": true,
+          "define_trace_hook": true,
+          "args": {
+            "STREAM_BUFFER_POINTER": "default",
+            "BYTE_COUNT": "default"
+          }
+        },
+        "STREAM_BUFFER_RESET": {
+          "generate_macro": true,
+          "define_trace_hook": true,
+          "args": {
+            "STREAM_BUFFER_POINTER": "default"
+          }
+        },
+        "STREAM_BUFFER_SEND": {
+          "generate_macro": true,
+          "define_trace_hook": true,
+          "args": {
+            "STREAM_BUFFER_POINTER": "default",
+            "BYTE_COUNT": "default"
+          }
+        },
+        "STREAM_BUFFER_SEND_FAILED": {
+          "generate_macro": true,
+          "define_trace_hook": true,
+          "args": {
+            "STREAM_BUFFER_POINTER": "default"
+          }
+        },
+        "STREAM_BUFFER_SEND_FROM_ISR": {
+          "generate_macro": true,
+          "define_trace_hook": true,
+          "args": {
+            "STREAM_BUFFER_POINTER": "default",
+            "BYTE_COUNT": "default"
+          }
+        },
+        "TAKE_MUTEX_RECURSIVE": {
+          "generate_macro": true,
+          "define_trace_hook": true,
+          "args": {
+            "QUEUE_NAME": "default",
+            "QUEUE_LENGTH": "default",
+            "QUEUE_POINTER": "default"
+          }
+        },
+        "TAKE_MUTEX_RECURSIVE_FAILED": {
+          "generate_macro": true,
+          "define_trace_hook": true,
+          "args": {
+            "QUEUE_NAME": "default",
+            "QUEUE_LENGTH": "default",
+            "QUEUE_POINTER": "default"
+          }
+        },
+        "TASK_CREATE": {
+          "generate_macro": true,
+          "define_trace_hook": true,
+          "args": {
+            "TASK_NAME": "default",
+            "TASK_POINTER": "default"
+          }
+        },
+        "TASK_CREATE_FAILED": {
+          "generate_macro": true,
+          "define_trace_hook": true,
+          "args": {}
+        },
+        "TASK_DELAY": {
+          "generate_macro": true,
+          "define_trace_hook": true,
+          "args": {}
+        },
+        "TASK_DELAY_UNTIL": {
+          "generate_macro": true,
+          "define_trace_hook": true,
+          "args": {
+            "TICK_COUNT": "default"
+          }
+        },
+        "TASK_DELETE": {
+          "generate_macro": true,
+          "define_trace_hook": true,
+          "args": {
+            "TASK_NAME": "default",
+            "TASK_POINTER": "default"
+          }
+        },
+        "TASK_INCREMENT_TICK": {
+          "generate_macro": true,
+          "define_trace_hook": true,
+          "args": {
+            "TICK_COUNT": "default"
+          }
+        },
+        "TASK_NOTIFY": {
+          "generate_macro": true,
+          "define_trace_hook": true,
+          "args": {
+            "INDEX": "default"
+          }
+        },
+        "TASK_NOTIFY_FROM_ISR": {
+          "generate_macro": true,
+          "define_trace_hook": true,
+          "args": {
+            "INDEX": "default"
+          }
+        },
+        "TASK_NOTIFY_GIVE_FROM_ISR": {
+          "generate_macro": true,
+          "define_trace_hook": true,
+          "args": {
+            "INDEX": "default"
+          }
+        },
+        "TASK_NOTIFY_TAKE": {
+          "generate_macro": true,
+          "define_trace_hook": true,
+          "args": {
+            "INDEX": "default"
+          }
+        },
+        "TASK_NOTIFY_TAKE_BLOCK": {
+          "generate_macro": true,
+          "define_trace_hook": true,
+          "args": {
+            "INDEX": "default"
+          }
+        },
+        "TASK_NOTIFY_WAIT": {
+          "generate_macro": true,
+          "define_trace_hook": true,
+          "args": {
+            "INDEX": "default"
+          }
+        },
+        "TASK_NOTIFY_WAIT_BLOCK": {
+          "generate_macro": true,
+          "define_trace_hook": true,
+          "args": {
+            "INDEX": "default"
+          }
+        },
+        "TASK_PRIORITY_SET": {
+          "generate_macro": true,
+          "define_trace_hook": true,
+          "args": {
+            "TASK_NAME": "default",
+            "TASK_POINTER": "default",
+            "PRIORITY": "u16"
+          }
+        },
+        "TASK_RESUME": {
+          "generate_macro": true,
+          "define_trace_hook": true,
+          "args": {
+            "TASK_NAME": "default",
+            "TASK_POINTER": "default"
+          }
+        },
+        "TASK_RESUME_FROM_ISR": {
+          "generate_macro": true,
+          "define_trace_hook": true,
+          "args": {
+            "TASK_NAME": "default",
+            "TASK_POINTER": "default"
+          }
+        },
+        "TASK_SUSPEND": {
+          "generate_macro": true,
+          "define_trace_hook": true,
+          "args": {
+            "TASK_NAME": "default",
+            "TASK_POINTER": "default"
+          }
+        },
+        "TASK_SWITCHED_IN": {
+          "generate_macro": true,
+          "define_trace_hook": true,
+          "args": {
+            "TASK_NAME": "default",
+            "TASK_POINTER": "default"
+          }
+        },
+        "TASK_SWITCHED_OUT": {
+          "generate_macro": true,
+          "define_trace_hook": true,
+          "args": {
+            "TASK_NAME": "default",
+            "TASK_POINTER": "default"
+          }
+        },
+        "TIMER_COMMAND_RECEIVED": {
+          "generate_macro": true,
+          "define_trace_hook": true,
+          "args": {
+            "TIMER_NAME": "default",
+            "TIMER_POINTER": "default",
+            "COMMAND_ID": "default",
+            "COMMAND_VALUE": "default"
+          }
+        },
+        "TIMER_COMMAND_SEND": {
+          "generate_macro": true,
+          "define_trace_hook": true,
+          "args": {
+            "TIMER_NAME": "default",
+            "TIMER_POINTER": "default",
+            "COMMAND_ID": "default",
+            "COMMAND_VALUE": "default",
+            "RETURN": "default"
+          }
+        },
+        "TIMER_CREATE": {
+          "generate_macro": true,
+          "define_trace_hook": true,
+          "args": {
+            "TIMER_NAME": "default",
+            "TIMER_POINTER": "default"
+          }
+        },
+        "TIMER_CREATE_FAILED": {
+          "generate_macro": true,
+          "define_trace_hook": true,
+          "args": {}
+        },
+        "TIMER_EXPIRED": {
+          "generate_macro": true,
+          "define_trace_hook": true,
+          "args": {
+            "TIMER_NAME": "default",
+            "TIMER_POINTER": "default"
+          }
+        }
+    }
+}
+
