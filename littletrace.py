@@ -49,10 +49,82 @@ def generate(args, config):
 def parse(args, config):
     data = args.parse.read_bytes()
     event_structs = BinaryParser(data, config).get_all()
+    indent = 0
     for struct in event_structs:
-        struct = config.parse_struct(struct)
-        print(struct)
+        if any(value != 0 for value in struct.values()):
+            struct = config.parse_struct(struct)
+            if struct["name"] == "TASK_SWITCHED_OUT":
+                indent = 1
+                break
+            elif struct["name"] == "TASK_SWITCHED_IN":
+                break
+    for struct in event_structs:
+        if any(value != 0 for value in struct.values()):
+            struct = config.parse_struct(struct)
+            if struct["name"] == "TASK_SWITCHED_IN":
+                print()
+            if struct["name"] == "TASK_SWITCHED_OUT":
+                indent -= 1
+
+            print(f"{struct.get('timestamp', ''):>4}", " | ", "   " * indent + human_summary(struct))
+
+            if struct["name"] == "TASK_SWITCHED_OUT":
+                if indent < 0:
+                    print("Switched out twice?")
+                    indent = 0
+                print()
+            if struct["name"] == "TASK_SWITCHED_IN":
+                indent += 1
     return event_structs
+
+def human_summary(struct):
+    task_name = struct.get("TASK_NAME", "???")
+    queue_name = struct.get("QUEUE_NAME", "???")
+    queue_length = struct.get("QUEUE_LENGTH", "???")
+    tick_count = struct.get("TICK_COUNT", "???")
+
+    if struct["name"] == "TASK_SWITCHED_IN":
+        return f"Switched in task: {task_name}"
+    elif struct["name"] == "TASK_SWITCHED_OUT":
+        return f"Switched out task: {task_name}"
+    elif struct["name"] == "BLOCKING_ON_QUEUE_RECEIVE":
+        return f"Blocking on receive from {queue_name}, have {queue_length} items"
+    elif struct["name"] == "BLOCKING_ON_QUEUE_SEND":
+        return f"Blocking on send to {queue_name}, have {queue_length} items"
+    elif struct["name"] == "QUEUE_RECEIVE_FROM_ISR":
+        return f"ISR: received from {queue_name}, have {queue_length-1} items"
+    elif struct["name"] == "QUEUE_RECEIVE":
+        return f"Received from {queue_name}, have {queue_length-1} items"
+    elif struct["name"] == "QUEUE_SEND":
+        return f"Sent to {queue_name}, have {queue_length+1} items"
+    elif struct["name"] == "QUEUE_SEND_FROM_ISR":
+        return f"ISR: sent to {queue_name}, have {queue_length+1} items"
+    elif struct["name"] == "TASK_INCREMENT_TICK":
+        return f"Tick incremented to {tick_count}"
+    elif struct["name"] == "MOVED_TASK_TO_READY_STATE":
+        return f"Moving {task_name} to ready state"
+    elif struct["name"] == "POST_MOVED_TASK_TO_READY_STATE":
+        return f"Moved {task_name} to ready state"
+    elif struct["name"] == "QUEUE_PEEK_FAILED":
+        return f"Failed to peek from {queue_name}, have {queue_length} items"
+    elif struct["name"] == "TASK_DELAY_UNTIL":
+        return f"Called vTaskDelayUntil, should wake up at tick {tick_count}"
+    elif struct["name"] == "TASK_DELAY":
+        return f"Called vTaskDelay"
+    elif struct["name"] == "QUEUE_CREATE":
+        return f"Created queue"
+    elif struct["name"] == "QUEUE_REGISTRY_ADD":
+        return f"Added queue to registry with name {queue_name}"
+    elif struct["name"] == "TASK_CREATE":
+        return f"Created task named {task_name}"
+    elif struct["name"] == "TICK":
+        return f"Tick hook invoked"
+    elif struct["name"] == "IDLE":
+        return f"Idle hook invoked"
+    elif struct["name"] == "STACK_OVERFLOW":
+        return f"!-!-!-! STACK OVERFLOW DETECTED !-!-!-!"
+    else:
+        return struct['name'] + "(" + ", ".join(f"{key}={value}" for key, value in struct.items() if key not in { "name", "timestamp", "event_id" }) + ")"
 
 ###########################################################################################################
 # Configuration
@@ -130,6 +202,20 @@ class TraceConfig:
         ),
         "example": "true",
         "group": "DATA"
+    })
+    have_static_assert: bool = field(metadata={
+        "description": (
+            "Whether the compiler has static_assert.",
+        ),
+        "example": "true",
+        "group": "API"
+    })
+    have_offsetof: bool = field(metadata={
+        "description": (
+            "Whether the compiler has offsetof.",
+        ),
+        "example": "true",
+        "group": "API"
     })
     filename_header: str = field(metadata={
         "description": (
@@ -260,6 +346,14 @@ class TraceConfig:
         "group": "API"
     })
 
+    custom_hooks: dict = field(metadata={
+        "description": (
+            "Custom hooks"
+        ),
+        "example": "See example config",
+        "group": "API",
+    })
+
     freertos_enable: bool = field(metadata={
         "description": (
             "Whether to generate FreeRTOS integration code.",
@@ -386,11 +480,11 @@ class TraceConfig:
         return sum(map(ord, name[start:stop])) % 256
 
     def name_hash_string_sum(self, name):
-        return sum(map(ord, name)) % (256 ** n_bytes_for_datatype(self.data_members[self.freertos_name_arg]))
+        return sum(map(ord, name)) % 256
 
     def name_hash_table(self):
         spec = self.get_hash_function_spec()
-        table = { 0: "???" }
+        table = { 0: "(unknown)" }
         if spec["strategy"] == "fixed_substring_sum":
             for name in self.names():
                 table[self.name_hash_fixed_substring_sum(name, spec["start"], spec["stop"])] = name
@@ -402,7 +496,6 @@ class TraceConfig:
                 table[len(name)] = name
         else:
             raise ValueError(spec["strategy"])
-        table[0] = "(unknown)"
         return table
 
     def get_hash_params_fixed_substring_sum(self):
@@ -481,21 +574,28 @@ class TraceConfig:
     def parse_struct(self, struct):
         out = {}
         event_id = struct["event_id"]
-        hook_names = list(self.freertos_hooks)
-        if event_id <= len(hook_names):
-            out["name"] = hook_names[event_id-1]
+        freertos_hook_names = list(self.freertos_hooks)
+        n_freertos_hooks = len(freertos_hook_names)
+        custom_hook_names = list(self.custom_hooks)
+        n_custom_hooks = len(custom_hook_names)
+        if 0 < event_id <= n_freertos_hooks:
+            out["name"] = freertos_hook_names[event_id-1]
             config = self.freertos_hooks[out["name"]]["args"]
             for field, member in config.items():
                 if member == "default":
                     member = self.freertos_default_args[field]
                 if member:
                     out[field] = struct[member]
+        elif n_freertos_hooks < event_id < n_freertos_hooks + n_custom_hooks:
+            out["name"] = custom_hook_names[event_id-1-n_freertos_hooks]
         else:
             out["name"] = f"Unknown (id={event_id})"
         name_table = self.name_hash_table()
         for field in out:
             if field.endswith("_NAME"):
-                if out[field] in name_table:
+                if out[field] not in name_table or out[field] == "(unknown)":
+                    out[field] = f"unknown({out[field]})"
+                else:
                     out[field] = name_table[out[field]]
         out |= struct
         return out
@@ -545,7 +645,8 @@ class BinaryParser:
                 entries_by_counter = entries[cutoff:] + entries[:cutoff]
                 if self.config.enable_timestamp:
                     entries_by_timestamp = sorted(entries, key=lambda entry: entry["timestamp"])
-                    assert entries_by_timestamp == entries_by_counter
+                    if entries_by_timestamp != entries_by_counter:
+                        print("Warning: timestamp or counter is wrong")
                 return entries_by_counter
         elif self.config.enable_timestamp:
             entries_by_timestamp = sorted(entries, key=lambda entry: entry["timestamp"])
@@ -571,6 +672,15 @@ class CodeGenerator:
         self.config = config
 
     def hfile_text(self) -> str:
+        trace_hook_macros = []
+        event_id_definitions = []
+
+        event_id = self.custom_event_id_start()
+        for hook, args in self.config.custom_hooks.items():
+            event_id_definitions.append(f"#define TRACE_EVENT_{hook} {event_id}")
+            event_id += 1
+            trace_hook_macros.append(self.custom_trace_call(hook, args))
+
         return self.cleanse_file(TEMPLATE_HFILE.format(
             pre_include=f'#include "{self.config.pre_include}"' if self.config.pre_include else "",
             definition_include_guard=self.config.definition_include_guard,
@@ -583,6 +693,8 @@ class CodeGenerator:
             fields=self.join_lines(self.entry_struct_fields(), indentation_level=1),
             impl=self.implementation_in_header(),
             code_static_assertions=self.code_static_assertions(),
+            event_id_definitions=self.join_lines(event_id_definitions, indentation_level=0),
+            trace_hook_macros=self.join_lines(trace_hook_macros, indentation_level=0)
         ))
 
     def cfile_text(self) -> str:
@@ -603,6 +715,9 @@ class CodeGenerator:
             typename_trace_buffer=self.config.typename_trace_buffer,
         ))
 
+    def custom_event_id_start(self):
+        return 1 + len(self.config.freertos_hooks)
+
     def freertos_config_text(self) -> str:
         event_id_definitions = []
         trace_hook_definitions = []
@@ -610,12 +725,15 @@ class CodeGenerator:
 
         freertos_hook_config = self.config.freertos_hooks
 
-        for event_id, (hook, config) in enumerate(freertos_hook_config.items(), start=1):
+        event_id = 1
+        for hook, config in freertos_hook_config.items():
             event_id_definitions.append(f"#define TRACE_EVENT_FREERTOS_{hook} {event_id}")
             if config["define_trace_hook"]:
                 trace_hook_definitions.append(f"#define trace{hook} TRACE_HOOK_{hook}")
             if config["generate_macro"]:
                 trace_hook_macros.append(self.freertos_trace_call(hook, config))
+            event_id += 1
+
         return self.cleanse_file(TEMPLATE_FREERTOS_CONFIG.format(
             header=self.config.filename_header,
             event_id_definitions=self.join_lines(event_id_definitions, indentation_level=0),
@@ -784,12 +902,16 @@ class CodeGenerator:
             return f'#include "{self.config.filename_header}"'
 
     def offset_assertions(self, struct, member, datatype, offset):
+        if not self.config.have_offsetof:
+            return []
         return [
             f'static_assert(offsetof({struct}, {member}) == {offset}, "{member} does not have the expected offset");',
             f'static_assert(offsetof({struct}, {member}) % sizeof({datatype}) == 0, "{member} is misaligned");',
         ]
 
     def code_static_assertions(self):
+        if not self.config.have_static_assert:
+            return ""
         assertions = []
         assertions.extend(self.offset_assertions(self.config.typename_trace_entry, "event_id", self.config.typename_event_id, self.config.offset_event_id()))
         for member, datatype in self.config.data_members.items():
@@ -869,10 +991,12 @@ class CodeGenerator:
             timer_names=(", ".join(f'"{name}"' for name in self.config.freertos_timers)),
         )
 
+    def macro_name(self, hook):
+        return f"TRACE_HOOK_{hook}"
+
     def freertos_trace_call(self, name, config):
-        macro_name = f"TRACE_HOOK_{name}"
+        function_args = self.hook_args_init(f"{self.config.freertos_event_id_prefix}{name}")
         macro_args = []
-        function_args = [f"{self.config.freertos_event_id_prefix}{name}"] + ["0" for _ in range(self.config.trace_update_n_args()-1)]
         macro_code = []
 
         if sum(name in hooks for hooks in FREERTOS_TRACE_HOOKS.values()) != 1:
@@ -880,7 +1004,7 @@ class CodeGenerator:
 
         for arg_types, hooks in FREERTOS_TRACE_HOOKS.items():
             if name in hooks:
-                args = (name, self.config, function_args, config)
+                args = (name, self.config, function_args, config["args"])
                 if "QUEUE_HANDLE" in arg_types:
                     maybe_add_queue_length(*args)
                     maybe_add_queue_name(*args)
@@ -931,12 +1055,31 @@ class CodeGenerator:
                 # Special cases
                 if name in { "TASK_SWITCHED_IN", "TASK_SWITCHED_OUT" }:
                     maybe_add_current_task_name(*args)
-                    maybe_add_current_task_pointer(*args)
 
                 macro_args.extend(arg_types)
                 break
+        return self.make_macro(name, macro_args, [], function_args)
 
-        macro_arglist = ', '.join(macro_args)
+    def custom_trace_call(self, hook, args):
+        function_args = self.hook_args_init(f"TRACE_EVENT_{hook}")
+        for func_arg_name, config in args.items():
+            dest = config["destination"]
+            code = func_arg_name
+            if config["type"] == "pointer":
+                code = pointer_cast_code(self.config.data_members[dest], func_arg_name)
+            elif config["type"] == "string":
+                code = f"_get_name_hash({func_arg_name})"
+            elif config["type"] == "int":
+                code = f"({self.config.data_members[dest]})({func_arg_name})"
+            else:
+                raise ValueError(config["type"])
+            function_args[self.config.data_member_index(dest)] = code
+        return self.make_macro(hook, list(args), [], function_args)
+
+    def hook_args_init(self, name):
+        return [name] + ["0" for _ in range(self.config.trace_update_n_args()-1)]
+
+    def make_macro(self, name, macro_args, macro_code, function_args):
         function_args = [
             f"    {arg} "
             if i == len(function_args)-1
@@ -944,13 +1087,13 @@ class CodeGenerator:
             for i, arg
             in enumerate(function_args)
         ]
-
         macro_code.extend([f"{self.config.function_name_update_trace}(", *function_args, ");"])
         max_macro_line_len = max(len(line) for line in macro_code)
         macro_code = [line + " " * (max_macro_line_len - len(line) + 1) for line in macro_code]
+        macro_arglist = ", ".join(macro_args)
         macro_code = "\\\n    ".join(macro_code)
+        return f"#define {self.macro_name(name)}({macro_arglist}) do{{ \\\n    {macro_code}\\\n}} while (0)\n"
 
-        return f"#define {macro_name}({macro_arglist}) do{{ \\\n    {macro_code}\\\n}} while (0)\n"
 
     def code_freertos_trace_calls(self):
         if not self.config.freertos_enable:
@@ -1046,10 +1189,10 @@ class CodeGenerator:
 # Helpers for generating trace calls
 ###########################################################################################################
 
-def freertos_trace_call_helper(macro_name):
+def trace_call_helper(macro_name):
     def decorator(func):
-        def wrapper(hook_name, main_config, function_args, config):
-            member_name = config["args"][macro_name]
+        def wrapper(hook_name, main_config, function_args, args):
+            member_name = args[macro_name]
             if member_name == "default":
                 member_name = main_config.freertos_default_args[macro_name]
             if member_name:
@@ -1060,59 +1203,57 @@ def freertos_trace_call_helper(macro_name):
                 index = main_config.data_member_index(member_name)
                 value = func(datatype)
                 if function_args[index] != "0":
-                    print(f"Note: for FreeRTOS hook {hook_name}, config wants to set {member_name} to both \"{function_args[index]}\" and \"{value}\". The latter will be used.")
+                    print(f"Note: for hook {hook_name}, config wants to set {member_name} to both \"{function_args[index]}\" and \"{value}\". The latter will be used.")
                 function_args[index] = value
         return wrapper
     return decorator
 
-def int_converter(name):
-    return freertos_trace_call_helper(name)(lambda datatype: f"({datatype})({name})")
+def maybe_add_int(name):
+    return trace_call_helper(name)(lambda datatype: f"({datatype})({name})")
 
-def pointer_converter(config_name, macro_arg):
-    return freertos_trace_call_helper(config_name)(lambda datatype: pointer_cast_code(datatype, macro_arg))
+def maybe_add_pointer(config_name, macro_arg):
+    return trace_call_helper(config_name)(lambda datatype: pointer_cast_code(datatype, macro_arg))
 
-@freertos_trace_call_helper("QUEUE_LENGTH")
+@trace_call_helper("QUEUE_LENGTH")
 def maybe_add_queue_length(datatype):
     return f"({datatype})uxQueueMessagesWaiting(QUEUE_HANDLE)"
 
-@freertos_trace_call_helper("QUEUE_NAME")
+@trace_call_helper("QUEUE_NAME")
 def maybe_add_queue_name(datatype):
-    return f"_get_name_hash(pcQueueGetName(QUEUE_HANDLE))"
+    return f"_GET_QUEUE_NAME_HASH(QUEUE_HANDLE)"
 
-@freertos_trace_call_helper("TASK_NAME")
+@trace_call_helper("TASK_NAME")
 def maybe_add_task_name(datatype):
     return f"_get_name_hash(pcTaskGetName(TASK_HANDLE))"
 
-@freertos_trace_call_helper("TASK_NAME")
+@trace_call_helper("TASK_NAME")
 def maybe_add_current_task_name(datatype):
-    return f"_get_name_hash(pcTaskGetName(pxCurrentTCB))"
+    return f"_get_name_hash(pcTaskGetName(NULL))"
 
-@freertos_trace_call_helper("TIMER_NAME")
+@trace_call_helper("TIMER_NAME")
 def maybe_add_timer_name(datatype):
     return f"_get_name_hash(pcTimerGetName(TIMER))"
 
-maybe_add_task_priority         = int_converter("PRIORITY")
-maybe_add_queue_type            = int_converter("QUEUE_TYPE")
-maybe_add_tick_count            = int_converter("TICK_COUNT")
-maybe_add_timer_command_id      = int_converter("COMMAND_ID")
-maybe_add_timer_command_value   = int_converter("COMMAND_VALUE")
-maybe_add_timer_return_value    = int_converter("RETURN")
-maybe_add_is_message_buffer     = int_converter("IS_MESSAGE_BUFFER")
-maybe_add_byte_count            = int_converter("BYTE_COUNT")
-maybe_add_bits                  = int_converter("BITS")
-maybe_add_bits_2                = int_converter("BITS_2")
-maybe_add_timeout_occurred      = int_converter("TIMEOUT_OCCURRED")
-maybe_add_param_1               = int_converter("PARAM_1")
-maybe_add_param_2               = int_converter("PARAM_2")
-maybe_add_callback_returns      = int_converter("RETURN")
-maybe_add_index                 = int_converter("INDEX")
-maybe_add_timer_pointer         = pointer_converter("TIMER_POINTER", "TIMER")
-maybe_add_task_pointer          = pointer_converter("TASK_POINTER", "TASK_HANDLE")
-maybe_add_queue_pointer         = pointer_converter("QUEUE_POINTER", "QUEUE_HANDLE")
-maybe_add_stream_buffer_pointer = pointer_converter("STREAM_BUFFER_POINTER", "STREAM_BUFFER")
-maybe_add_address               = pointer_converter("ADDRESS", "ADDRESS")
-maybe_add_current_task_pointer  = pointer_converter("TASK_POINTER", "pxCurrentTCB")
-
+maybe_add_task_priority         = maybe_add_int("PRIORITY")
+maybe_add_queue_type            = maybe_add_int("QUEUE_TYPE")
+maybe_add_tick_count            = maybe_add_int("TICK_COUNT")
+maybe_add_timer_command_id      = maybe_add_int("COMMAND_ID")
+maybe_add_timer_command_value   = maybe_add_int("COMMAND_VALUE")
+maybe_add_timer_return_value    = maybe_add_int("RETURN")
+maybe_add_is_message_buffer     = maybe_add_int("IS_MESSAGE_BUFFER")
+maybe_add_byte_count            = maybe_add_int("BYTE_COUNT")
+maybe_add_bits                  = maybe_add_int("BITS")
+maybe_add_bits_2                = maybe_add_int("BITS_2")
+maybe_add_timeout_occurred      = maybe_add_int("TIMEOUT_OCCURRED")
+maybe_add_param_1               = maybe_add_int("PARAM_1")
+maybe_add_param_2               = maybe_add_int("PARAM_2")
+maybe_add_callback_returns      = maybe_add_int("RETURN")
+maybe_add_index                 = maybe_add_int("INDEX")
+maybe_add_timer_pointer         = maybe_add_pointer("TIMER_POINTER", "TIMER")
+maybe_add_task_pointer          = maybe_add_pointer("TASK_POINTER", "TASK_HANDLE")
+maybe_add_queue_pointer         = maybe_add_pointer("QUEUE_POINTER", "QUEUE_HANDLE")
+maybe_add_stream_buffer_pointer = maybe_add_pointer("STREAM_BUFFER_POINTER", "STREAM_BUFFER")
+maybe_add_address               = maybe_add_pointer("ADDRESS", "ADDRESS")
 
 ###########################################################################################################
 # Helpers for datatypes
@@ -1163,7 +1304,6 @@ TEMPLATE_HFILE = """
 
 {pre_include}
 
-#include <assert.h>
 #include <stdint.h>
 #include <stddef.h>
 #include <stdbool.h>
@@ -1181,6 +1321,10 @@ typedef struct __attribute__((__packed__)) {typename_trace_buffer}
 }} {typename_trace_buffer};
 
 {code_static_assertions}
+
+{event_id_definitions}
+
+{trace_hook_macros}
 
 {function_prototypes}
 
@@ -1348,8 +1492,11 @@ TEMPLATE_FREERTOS_CONFIG = """
 
 #include "{header}"
 
-// Some trace hooks don't pass the current task, but we know it's going to be the same as pxCurrentTCB
-extern struct tskTaskControlBlock* volatile pxCurrentTCB;
+#if configQUEUE_REGISTRY_SIZE > 0
+    #define _GET_QUEUE_NAME_HASH(QUEUE_HANDLE) _get_name_hash(pcQueueGetName(QUEUE_HANDLE))
+#else
+    #define _GET_QUEUE_NAME_HASH(QUEUE_HANDLE) 0
+#endif
 
 // All event IDs
 {event_id_definitions}
@@ -1444,6 +1591,9 @@ FREERTOS_TRACE_HOOKS = {
         "TASK_SWITCHED_OUT",
         "TIMER_CREATE_FAILED",
         "EVENT_GROUP_CREATE_FAILED",
+        "STACK_OVERFLOW",
+        "IDLE",
+        "TICK",
     },
     ("QUEUE_HANDLE", ): {
         "BLOCKING_ON_QUEUE_RECEIVE",
